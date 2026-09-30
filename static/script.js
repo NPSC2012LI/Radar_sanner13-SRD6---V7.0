@@ -418,6 +418,22 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     
+    // 联动渲染规则：源传感器有数据时，强制渲染目标传感器（目标已有数据则不覆盖）
+    const FORCE_RENDER_MAP = { 29: 28, 61: 62 }; // 29有数据→渲染28；61有数据→渲染62
+
+    function applyForceRender(data) {
+        if (!Array.isArray(data)) return data;
+        Object.entries(FORCE_RENDER_MAP).forEach(([src, dst]) => {
+            const srcItem = data.find(item => item.sensor_id === Number(src));
+            const hasDst = data.some(item => item.sensor_id === Number(dst));
+            // 源有数据且目标无数据时，克隆源数据项并以目标sensor_id渲染
+            if (srcItem && !hasDst) {
+                data.push({ ...srcItem, sensor_id: Number(dst) });
+            }
+        });
+        return data;
+    }
+
     // 获取数据并更新页面
     function fetchData() {
         if (!isAnimating) {
@@ -435,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 // 接口返回的数据格式为数组 [{ distance: 781.27875, angle: 135.0 }, ...]
+                data = applyForceRender(data); // 联动补齐：29→28、61→62（目标已有数据则不处理）
 //                console.log('Fetched data:', data); // 打印获取的数据
                 updateSensorDataTable(data); // 更新传感器数据表格
                 console.log('Checking new data:', data); // 调试输出
